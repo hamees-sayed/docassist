@@ -1,0 +1,12 @@
+langchain
+chromadb==0.3.29
+PyPDF2
+python-dotenv
+streamlit
+streamlit-extras
+google-generativeai
+langchain-google-genai
+IPython
+dotenv
+pyperclip
+
