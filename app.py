@@ -1,4 +1,5 @@
 import os
+import pickle
 import streamlit as st
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
@@ -42,11 +43,11 @@ def extract_text_from_pdf(file):
 
 
 def generate_response(pdf, query):
-    data = extract_text_from_pdf(pdf)
+    text = extract_text_from_pdf(pdf)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-    text = text_splitter.split_text(data)
+    chunks = text_splitter.split_text(text)
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    db = Chroma.from_texts(text, embeddings).as_retriever()
+    db = Chroma.from_texts(chunks, embeddings).as_retriever()
     
     prompt_template = """
     Please answer the question in as much detail as possible based on the provided context.
