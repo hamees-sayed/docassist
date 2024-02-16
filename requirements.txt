@@ -6,5 +6,4 @@ streamlit
 streamlit-extras
 google-generativeai
 langchain-google-genai
-python-dotenv
 
