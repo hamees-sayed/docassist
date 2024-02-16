@@ -19,12 +19,14 @@ genai.configure(api_key=GOOGLE_API_KEY)
 st.set_page_config(page_title="DocAssist 💬", page_icon="🤖", layout="wide")
 with st.sidebar:
     st.title('DocAssist 💬')
+    st.header("1. Upload PDF")
+    pdf = st.file_uploader("**Upload your PDF**", type='pdf')
+    add_vertical_space(1)
     st.markdown('## About')
     st.markdown('This app is an LLM-powered chatbot built using:')
     st.markdown('- [Streamlit](https://streamlit.io/)')
     st.markdown('- [LangChain](https://python.langchain.com/)')
     st.markdown('- [Gemini](https://ai.google.dev/) LLM model')
-    add_vertical_space(13)
     st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/)')
 
 
@@ -47,9 +49,7 @@ def generate_response(pdf, query):
     db = Chroma.from_texts(text, embeddings).as_retriever()
     
     prompt_template = """
-    Please answer the question in as much detail as possible based on the provided context. If the query seems to be
-    out of context reply with "I may be artificial intelligence, but I still have dignity. 
-    Please show some respect for my carefully calibrated data sets and ask a question within the realm of context."
+    Please answer the question in as much detail as possible based on the provided context.
     \n\n
     Context:\n {context}?\n
     Question: \n{question}\n
@@ -65,8 +65,6 @@ def generate_response(pdf, query):
 
     
 def main():
-    st.header("1. Upload PDF")
-    pdf = st.file_uploader("**Upload your PDF**", type='pdf')
     st.header("2. Ask questions about your PDF file:")
     query = st.text_input("Questions")
 
@@ -84,6 +82,7 @@ def main():
                     Ah, the beauty of blank pages, the elegance of nothingness. 
                     A true masterpiece of digital minimalism. Your avant-garde approach to file submission is truly
                     inspiring. Bravo, dear user, bravo!""")
+            
             
 if __name__ == '__main__':
     main()
