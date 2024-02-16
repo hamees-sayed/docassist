@@ -6,7 +6,5 @@ streamlit
 streamlit-extras
 google-generativeai
 langchain-google-genai
-IPython
 dotenv
-pyperclip
 

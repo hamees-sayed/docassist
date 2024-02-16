@@ -1,19 +1,31 @@
+import os
+import streamlit as st
+from PyPDF2 import PdfReader
+from dotenv import load_dotenv
 import google.generativeai as genai
 from langchain.prompts import PromptTemplate
+from langchain_community.vectorstores import Chroma
 from langchain.chains.question_answering import load_qa_chain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from PyPDF2 import PdfReader
-import os
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from IPython.display import display, HTML
-import streamlit as st
 from streamlit_extras.add_vertical_space import add_vertical_space
-from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 genai.configure(api_key=GOOGLE_API_KEY)
+
+
+st.set_page_config(page_title="DocAssist 💬", page_icon="🤖", layout="wide")
+with st.sidebar:
+    st.title('DocAssist 💬')
+    st.markdown('## About')
+    st.markdown('This app is an LLM-powered chatbot built using:')
+    st.markdown('- [Streamlit](https://streamlit.io/)')
+    st.markdown('- [LangChain](https://python.langchain.com/)')
+    st.markdown('- [Gemini](https://ai.google.dev/) LLM model')
+    add_vertical_space(13)
+    st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/)')
 
 
 def extract_text_from_pdf(file):
@@ -51,16 +63,6 @@ def generate_response(pdf, query):
     
     return response["output_text"]
 
-st.set_page_config(page_title="DocAssist 💬", page_icon="🤖", layout="wide")
-with st.sidebar:
-    st.title('DocAssist 💬')
-    st.markdown('## About')
-    st.markdown('This app is an LLM-powered chatbot built using:')
-    st.markdown('- [Streamlit](https://streamlit.io/)')
-    st.markdown('- [LangChain](https://python.langchain.com/)')
-    st.markdown('- [Gemini](https://ai.google.dev/) LLM model')
-    add_vertical_space(13)
-    st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/)')
     
 def main():
     st.header("1. Upload PDF")
