@@ -27,8 +27,8 @@ with st.sidebar:
     st.markdown('This app is an LLM-powered chatbot built using:')
     st.markdown('- [Streamlit](https://streamlit.io/)')
     st.markdown('- [LangChain](https://python.langchain.com/)')
-    st.markdown('- [Gemini](https://ai.google.dev/) LLM model')
-    st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/)')
+    st.markdown('- [Gemini](https://ai.google.dev/)')
+    st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/), [Github](https://github.com/hamees-sayed/docassist)')
 
 
 def extract_text_from_pdf(file):
