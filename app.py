@@ -83,12 +83,15 @@ def extract_text_from_pdf(file):
         texts = pool.map(extract_and_clean, [file])
     return '\n'.join(texts)
 
+
 def generate_response(pdf, query):
     text = extract_text_from_pdf(pdf)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = text_splitter.split_text(text)
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    db = Chroma.from_texts(chunks, embeddings).as_retriever()
+    # save to disk
+    db = Chroma.from_texts(chunks, embeddings, persist_directory="./chroma_db")
+    db.persist()
     
     prompt_template = """
     Please answer the question in as much detail as possible based on the provided context and keep it simple so that even
@@ -101,7 +104,9 @@ def generate_response(pdf, query):
     prompt = PromptTemplate(template = prompt_template, input_variables = ["context", "question"])
     llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5)
     chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
-    docs = db.get_relevant_documents(query)
+    # load from disk
+    db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+    docs = db.similarity_search(query)
     response = chain({"input_documents":docs, "question": query}, return_only_outputs=True)["output_text"]
     
     equation_pattern = r'(\$.+?\$)'
