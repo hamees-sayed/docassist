@@ -60,7 +60,7 @@ def clean_text(text):
     text = non_alphanumeric_re.sub('', text)
     text = whitespace_re.sub(' ', text)
     
-    tokens = tokens = [word for word in word_tokenize(text) if word not in stop_words]
+    tokens = [word for word in word_tokenize(text) if word not in stop_words]
     tokens = [lemmatizer.lemmatize(word) for word in tokens]
     
     cleaned_text = ' '.join(tokens)
@@ -108,9 +108,6 @@ def generate_response(pdf, query):
     db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
     docs = db.similarity_search(query)
     response = chain({"input_documents":docs, "question": query}, return_only_outputs=True)["output_text"]
-    
-    equation_pattern = r'(\$.+?\$)'
-    response = re.sub(equation_pattern, r'$$\1$$', response)
     
     return response
 
