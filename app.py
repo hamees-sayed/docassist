@@ -1,9 +1,14 @@
 import os
-import pickle
+import re
+import nltk
 import streamlit as st
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
+from multiprocessing import Pool
+from nltk.corpus import stopwords
 import google.generativeai as genai
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 from langchain.prompts import PromptTemplate
 from langchain_community.vectorstores import Chroma
 from langchain.chains.question_answering import load_qa_chain
@@ -11,6 +16,17 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from streamlit_extras.add_vertical_space import add_vertical_space
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
+def download_nltk_resources():
+    try:
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+        nltk.data.find('corpora/wordnet')
+    except LookupError:
+        nltk.download('punkt')
+        nltk.download('stopwords')
+        nltk.download('wordnet')
+        
+download_nltk_resources()
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
@@ -31,16 +47,41 @@ with st.sidebar:
     st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/), [Github](https://github.com/hamees-sayed/docassist)')
 
 
+# Regular Expressions
+non_alphanumeric_re = re.compile(r'[^a-zA-Z0-9\s]')
+whitespace_re = re.compile(r'\s+')
+
+# NLTK Resources
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def clean_text(text):
+    text = text.lower()
+    text = non_alphanumeric_re.sub('', text)
+    text = whitespace_re.sub(' ', text)
+    
+    tokens = tokens = [word for word in word_tokenize(text) if word not in stop_words]
+    tokens = [lemmatizer.lemmatize(word) for word in tokens]
+    
+    cleaned_text = ' '.join(tokens)
+    
+    return cleaned_text
+
+def extract_and_clean(file):
+    pdf_reader = PdfReader(file)
+    num_pages = len(pdf_reader.pages)
+
+    text = ""
+    for page in range(num_pages):
+        text += pdf_reader.pages[page].extract_text()
+        
+    cleaned_text = clean_text(text)
+    return cleaned_text
+
 def extract_text_from_pdf(file):
-  pdf_reader = PdfReader(file)
-  num_pages = len(pdf_reader.pages)
-
-  text = ""
-  for page in range(num_pages):
-    text += pdf_reader.pages[page].extract_text()
-
-  return text
-
+    with Pool() as pool:
+        texts = pool.map(extract_and_clean, [file])
+    return '\n'.join(texts)
 
 def generate_response(pdf, query):
     text = extract_text_from_pdf(pdf)
@@ -50,23 +91,27 @@ def generate_response(pdf, query):
     db = Chroma.from_texts(chunks, embeddings).as_retriever()
     
     prompt_template = """
-    Please answer the question in as much detail as possible based on the provided context.
+    Please answer the question in as much detail as possible based on the provided context and keep it simple so that even
+    a beginner can understand.
     \n\n
     Context:\n {context}?\n
     Question: \n{question}\n
     Answer:
     """
     prompt = PromptTemplate(template = prompt_template, input_variables = ["context", "question"])
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5)
     chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
     docs = db.get_relevant_documents(query)
-    response = chain({"input_documents":docs, "question": query}, return_only_outputs=True)
+    response = chain({"input_documents":docs, "question": query}, return_only_outputs=True)["output_text"]
     
-    return response["output_text"]
+    equation_pattern = r'(\$.+?\$)'
+    response = re.sub(equation_pattern, r'$$\1$$', response)
+    
+    return response
 
     
 def main():
-    st.header("2. Ask questions about your PDF file:")
+    st.header("2. Ask questions about your PDF:")
     query = st.text_input("Questions")
 
     if st.button("Ask"):
