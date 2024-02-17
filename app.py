@@ -116,18 +116,23 @@ def generate_response(pdf, query):
 
     
 def main():
-    st.header("2. Ask questions about your PDF:")
-    query = st.text_input("Questions")
-
-    if st.button("Ask"):
+    query = st.chat_input("What is up?")
+    if "messages" not in st.session_state:
+                st.session_state.messages = []
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            
+    if query:
         if pdf is not None:
-            if query != "":
-                response = generate_response(pdf, query)
+            st.chat_message("user").write(query)
+            st.session_state.messages.append({"role": "user", "content": query})
+            
+            response = generate_response(pdf, query)
+            with st.chat_message("assistant"):
                 st.markdown(response)
-            else:
-                st.markdown("""Ah, the silent inquiry, a technique of the discerning. 
-                        Your question speaks volumes in silence. Allow me to respond with the profound wisdom of 
-                            the ancient crickets: *chirp chirp*""")
+            st.session_state.messages.append({"role": "assistant", "content": response})
+
         else:
             st.write("""Oh, splendid choice! An invisible PDF, the rarest of them all. 
                     Ah, the beauty of blank pages, the elegance of nothingness. 
