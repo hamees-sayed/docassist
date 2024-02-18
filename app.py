@@ -16,7 +16,8 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from streamlit_extras.add_vertical_space import add_vertical_space
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
-def download_nltk_resources():
+# Initialize NLTK resources
+def initialize_nltk():
     try:
         nltk.data.find('tokenizers/punkt')
         nltk.data.find('corpora/stopwords')
@@ -25,37 +26,14 @@ def download_nltk_resources():
         nltk.download('punkt')
         nltk.download('stopwords')
         nltk.download('wordnet')
-        
-download_nltk_resources()
 
-load_dotenv()
-GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-genai.configure(api_key=GOOGLE_API_KEY)
-
-
-st.set_page_config(page_title="DocAssist 💬", page_icon="🤖", layout="wide")
-with st.sidebar:
-    st.title('DocAssist 💬')
-    st.header("1. Upload PDF")
-    pdf = st.file_uploader("**Upload your PDF**", type='pdf')
-    add_vertical_space(1)
-    st.markdown('## About')
-    st.markdown('This app is an LLM-powered chatbot built using:')
-    st.markdown('- [Streamlit](https://streamlit.io/)')
-    st.markdown('- [LangChain](https://python.langchain.com/)')
-    st.markdown('- [Gemini](https://ai.google.dev/)')
-    st.write('Made with by [Hamees Sayed](https://hamees-sayed.github.io/), [Github](https://github.com/hamees-sayed/docassist)')
-
-
-# Regular Expressions
-non_alphanumeric_re = re.compile(r'[^a-zA-Z0-9\s]')
-whitespace_re = re.compile(r'\s+')
-
-# NLTK Resources
-stop_words = set(stopwords.words('english'))
-lemmatizer = WordNetLemmatizer()
-
+# Clean text
 def clean_text(text):
+    non_alphanumeric_re = re.compile(r'[^a-zA-Z0-9\s]')
+    whitespace_re = re.compile(r'\s+')
+    stop_words = set(stopwords.words('english'))
+    lemmatizer = WordNetLemmatizer()
+    
     text = text.lower()
     text = non_alphanumeric_re.sub('', text)
     text = whitespace_re.sub(' ', text)
@@ -67,10 +45,10 @@ def clean_text(text):
     
     return cleaned_text
 
+# Extract and clean text from PDF
 def extract_and_clean(file):
     pdf_reader = PdfReader(file)
     num_pages = len(pdf_reader.pages)
-
     text = ""
     for page in range(num_pages):
         text += pdf_reader.pages[page].extract_text()
@@ -78,18 +56,18 @@ def extract_and_clean(file):
     cleaned_text = clean_text(text)
     return cleaned_text
 
+# Extract text from PDF
 def extract_text_from_pdf(file):
     with Pool() as pool:
         texts = pool.map(extract_and_clean, [file])
     return '\n'.join(texts)
 
-
+# Generate response
 def generate_response(pdf, query):
     text = extract_text_from_pdf(pdf)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = text_splitter.split_text(text)
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
-    # save to disk
     db = Chroma.from_texts(chunks, embeddings, persist_directory="./chroma_db")
     db.persist()
     
@@ -104,18 +82,42 @@ def generate_response(pdf, query):
     prompt = PromptTemplate(template = prompt_template, input_variables = ["context", "question"])
     llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5)
     chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
-    # load from disk
     db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
     docs = db.similarity_search(query)
     response = chain({"input_documents":docs, "question": query}, return_only_outputs=True)["output_text"]
     
     return response
 
-    
+# Main function
 def main():
+    # Load NLTK resources
+    initialize_nltk()
+    
+    # Load environment variables
+    load_dotenv()
+    GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+    genai.configure(api_key=GOOGLE_API_KEY)
+    
+    # Set up Streamlit page configuration
+    st.set_page_config(page_title="DocAssist 💬", page_icon="🤖", layout="wide")
+    
+    # Streamlit sidebar
+    with st.sidebar:
+        st.title('DocAssist 💬')
+        st.header("1. Upload PDF")
+        pdf = st.file_uploader("**Upload your PDF**", type='pdf')
+        add_vertical_space(1)
+        st.markdown('## About')
+        st.markdown('This app is an LLM-powered chatbot built using:')
+        st.markdown('- [Streamlit](https://streamlit.io/)')
+        st.markdown('- [LangChain](https://python.langchain.com/)')
+        st.markdown('- [Gemini](https://ai.google.dev/)')
+        st.write('Made by [Hamees Sayed](https://hamees-sayed.github.io/) - [Source](https://github.com/hamees-sayed/docassist)')
+    
+    # Chatbot functionality
     query = st.chat_input("What is up?")
     if "messages" not in st.session_state:
-                st.session_state.messages = []
+        st.session_state.messages = []
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
@@ -135,7 +137,7 @@ def main():
                     Ah, the beauty of blank pages, the elegance of nothingness. 
                     A true masterpiece of digital minimalism. Your avant-garde approach to file submission is truly
                     inspiring. Bravo, dear user, bravo!""")
-            
-            
+
+# Entry point
 if __name__ == '__main__':
     main()
