@@ -11,9 +11,9 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from langchain.prompts import PromptTemplate
 from langchain_community.vectorstores import Chroma
+from langchain.memory import ConversationBufferMemory
 from langchain.chains.question_answering import load_qa_chain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from streamlit_extras.add_vertical_space import add_vertical_space
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 # Initialize NLTK resources
@@ -63,28 +63,30 @@ def extract_text_from_pdf(file):
     return '\n'.join(texts)
 
 # Generate response
-def generate_response(pdf, query):
+def generate_response(pdf, query, history, temperature=0.5):
     text = extract_text_from_pdf(pdf)
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     chunks = text_splitter.split_text(text)
     embeddings = GoogleGenerativeAIEmbeddings(model = "models/embedding-001")
     db = Chroma.from_texts(chunks, embeddings, persist_directory="./chroma_db")
     db.persist()
+    context = "\n".join([message["content"] for message in history])
     
     prompt_template = """
-    Please answer the question in as much detail as possible based on the provided context and keep it simple so that even
-    a beginner can understand.
+    You are helpful assistant, a teacher and a friend, please answer the question in as much detail as possible based on the provided 
+    context and the history of the conversation and keep it simple so that even a beginner can understand. And also converse 
+    with the user if necessary. Thank you.
     \n\n
     Context:\n {context}?\n
     Question: \n{question}\n
     Answer:
     """
     prompt = PromptTemplate(template = prompt_template, input_variables = ["context", "question"])
-    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.5)
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", temperature=temperature)
     chain = load_qa_chain(llm, chain_type="stuff", prompt=prompt)
     db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
     docs = db.similarity_search(query)
-    response = chain({"input_documents":docs, "question": query}, return_only_outputs=True)["output_text"]
+    response = chain({"input_documents":docs, "question": query, "context":context}, return_only_outputs=True)["output_text"]
     
     return response
 
@@ -106,7 +108,13 @@ def main():
         st.title('DocAssist 💬')
         st.header("1. Upload PDF")
         pdf = st.file_uploader("**Upload your PDF**", type='pdf')
-        add_vertical_space(1)
+        temperature = st.slider(
+            "Select the creativity temperature for the AI",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.5,
+            step=0.01,
+        )
         st.markdown('## About')
         st.markdown('This app is an LLM-powered chatbot built using:')
         st.markdown('- [Streamlit](https://streamlit.io/)')
@@ -126,8 +134,7 @@ def main():
         if pdf is not None:
             st.chat_message("user").write(query)
             st.session_state.messages.append({"role": "user", "content": query})
-            
-            response = generate_response(pdf, query)
+            response = generate_response(pdf, query, st.session_state.messages, temperature)
             with st.chat_message("assistant"):
                 st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
