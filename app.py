@@ -73,9 +73,10 @@ def generate_response(pdf, query, history, temperature=0.5):
     context = "\n".join([message["content"] for message in history])
     
     prompt_template = """
-    You are helpful assistant, a teacher and a friend, please answer the question in as much detail as possible based on the provided 
-    context and the history of the conversation and keep it simple so that even a beginner can understand. And also converse 
-    with the user if necessary. Thank you.
+    You are helpful assistant, a teacher and a friend, please answer the question in as much detail as possible based on the 
+    provided context and the history of the conversation and keep it simple so that even a beginner can understand. 
+    If there are equations, wrap them in ""$"" and ""$"", for example ""$x^2 + 2x + 1 = 0$"".
+    And also converse with the user if necessary. Thank you.
     \n\n
     Context:\n {context}?\n
     Question: \n{question}\n
